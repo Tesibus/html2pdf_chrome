@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    html2pdf_chrome (0.0.1)
+    html2pdf_chrome (0.0.2)
       selenium-webdriver
 
 GEM

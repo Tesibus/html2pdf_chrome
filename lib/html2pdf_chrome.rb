@@ -11,7 +11,7 @@ require_relative "./html2pdf_chrome/html_converter"
 module HTML2PDFChrome
   class Error < StandardError; end
 
-  def self.convert_html_to_pdf(html)
-    HtmlConverter.new(html).convert_to_pdf!
+  def self.convert_html_to_pdf(html, header_template: "<div></div>", footer_template: "<div></div>")
+    HtmlConverter.new(html, header_template:, footer_template:).convert_to_pdf!
   end
 end
