@@ -24,7 +24,23 @@ module HTML2PDFChrome
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-software-rasterizer')
 
-        Selenium::WebDriver.for(:chrome, options: options)
+        # Self-hosted arm64 CI: Google publishes no linux/arm64 chromedriver,
+        # so selenium-manager cannot provision one there. CHROMEDRIVER_BIN
+        # (the chromium snap's own driver) supplies it — and the snap driver
+        # launches its OWN paired in-snap browser, so no binary may be set
+        # alongside it (a snap-confined driver cannot exec the /snap/bin
+        # wrapper; FGL hub runbook §Chrome-on-arm64 — same wiring as
+        # expeal-app's spec/support/capybara.rb). CHROME_BIN alone still
+        # points selenium-manager at a custom browser. Both unset on hosted
+        # runners, local dev, and Heroku (chrome-for-testing buildpack), where
+        # behavior is unchanged.
+        if ENV['CHROMEDRIVER_BIN']
+          service = Selenium::WebDriver::Chrome::Service.new(path: ENV['CHROMEDRIVER_BIN'])
+          Selenium::WebDriver.for(:chrome, options: options, service: service)
+        else
+          options.binary = ENV['CHROME_BIN'] if ENV['CHROME_BIN']
+          Selenium::WebDriver.for(:chrome, options: options)
+        end
       end
     end
   end
