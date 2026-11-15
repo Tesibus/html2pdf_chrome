@@ -209,4 +209,65 @@ RSpec.describe HTML2PDFChrome::HtmlConverter do
       expect(pdf_data[0..4]).to eq('%PDF-')
     end
   end
+
+  describe "retrying a failed print" do
+    let(:printing_failed) do
+      Selenium::WebDriver::Error::UnknownError.new(
+        'unhandled inspector error: {"code":-32000,"message":"Printing failed"}'
+      )
+    end
+
+    it 'retries once when Chrome answers "Printing failed", and warns about it' do
+      driver = stand_in_driver(landings: [:sent])
+      calls = 0
+      allow(driver).to receive(:execute_cdp) do
+        calls += 1
+        raise printing_failed if calls == 1
+
+        cdp_response
+      end
+
+      expect { expect(convert).to eq(pdf_bytes) }.to output(
+        /\A\[html2pdf_chrome\] .*retrying once/
+      ).to_stderr
+      expect(calls).to eq(2)
+      expect(driver.navigate).to have_received(:to).once
+    end
+
+    it 'raises the second failure unchanged' do
+      driver = stand_in_driver(landings: [:sent])
+      allow(driver).to receive(:execute_cdp).and_raise(printing_failed)
+
+      expect do
+        expect { convert }.to raise_error(Selenium::WebDriver::Error::UnknownError, /Printing failed/)
+      end.to output.to_stderr
+      expect(driver).to have_received(:execute_cdp).twice
+    end
+
+    it 'does not retry another error that carries the same code' do
+      driver = stand_in_driver(landings: [:sent])
+      allow(driver).to receive(:execute_cdp).and_raise(
+        Selenium::WebDriver::Error::UnknownError.new(
+          'unhandled inspector error: {"code":-32000,"message":"Invalid parameters"}'
+        )
+      )
+
+      expect do
+        expect { convert }.to raise_error(Selenium::WebDriver::Error::UnknownError, /Invalid parameters/)
+      end.not_to output.to_stderr
+      expect(driver).to have_received(:execute_cdp).once
+    end
+
+    it 'does not retry another class of error' do
+      driver = stand_in_driver(landings: [:sent])
+      allow(driver).to receive(:execute_cdp).and_raise(
+        Selenium::WebDriver::Error::TimeoutError.new("timed out")
+      )
+
+      expect do
+        expect { convert }.to raise_error(Selenium::WebDriver::Error::TimeoutError, /timed out/)
+      end.not_to output.to_stderr
+      expect(driver).to have_received(:execute_cdp).once
+    end
+  end
 end

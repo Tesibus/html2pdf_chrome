@@ -3,6 +3,9 @@ module HTML2PDFChrome
     # The page ChromeDriver opens a new browser on.
     START_PAGE = "data:,"
     READY_STATES = %w[loading interactive complete].freeze
+    # The inspector error Chrome sometimes answers Page.printToPDF with for a
+    # page that prints on the next attempt.
+    TRANSIENT_PRINT_FAILURE = /Printing failed/
 
     attr_reader :html, :header_template, :footer_template
 
@@ -20,19 +23,37 @@ module HTML2PDFChrome
       Chromedriver.fetch_driver do |driver|
         driver.navigate.to(data_url)
         ensure_page_loaded!(driver, data_url)
-        cdp_response = driver.execute_cdp(
-          'Page.printToPDF',
-          displayHeaderFooter: true,
-          printBackground: true,
-          headerTemplate: header_template,
-          footerTemplate: footer_template,
-        )
+        cdp_response = print_to_pdf_with_one_retry(driver)
         pdf_data = Base64.decode64(cdp_response['data'])
       end
       pdf_data
     end
 
     private
+
+    ##
+    # Retries the print once when it fails with TRANSIENT_PRINT_FAILURE. A
+    # second failure, another message or another class of error is raised
+    # unchanged.
+    #
+    def print_to_pdf_with_one_retry(driver)
+      print_to_pdf(driver)
+    rescue Selenium::WebDriver::Error::UnknownError => e
+      raise unless e.message.match?(TRANSIENT_PRINT_FAILURE)
+
+      warn '[html2pdf_chrome] Page.printToPDF answered "Printing failed"; retrying once'
+      print_to_pdf(driver)
+    end
+
+    def print_to_pdf(driver)
+      driver.execute_cdp(
+        'Page.printToPDF',
+        displayHeaderFooter: true,
+        printBackground: true,
+        headerTemplate: header_template,
+        footerTemplate: footer_template,
+      )
+    end
 
     ##
     # `navigate.to` can return before Chrome has committed the page, and a
