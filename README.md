@@ -88,6 +88,20 @@ These settings apply to this gem's driver only. Selenium's own process-wide sett
 
 Configure the gem before the first conversion. A Chrome that is already running keeps the settings it was started with.
 
+### One Chrome per conversion
+
+Starting Chrome is slow, so by default the gem starts one on the first conversion and shares it with every conversion after that. That Chrome stays running for as long as the process does.
+
+A long-lived process that only converts now and then can instead start a Chrome for each conversion and quit it afterwards:
+
+```ruby
+HTML2PDFChrome.configure do |config|
+  config.reuse_driver = false
+end
+```
+
+Each conversion then pays for a Chrome start, and its Chrome is quit as soon as it is done. Conversions still run one at a time.
+
 ## Errors
 
 Before a page is printed, the gem checks that Chrome is on the page it was sent and has finished loading it. If it is not, the page is sent once more. If Chrome still has not loaded it, `HTML2PDFChrome::NavigationError` (a subclass of `HTML2PDFChrome::Error`) is raised and no PDF is returned.

@@ -14,6 +14,10 @@ RSpec.describe HTML2PDFChrome::Configuration do
     expect(configuration.chromedriver_path).to be_nil
   end
 
+  it 'reuses the driver' do
+    expect(described_class.new.reuse_driver).to be(true)
+  end
+
   it 'keeps a change to one list of arguments out of the defaults' do
     described_class.new.chrome_arguments << "--hide-scrollbars"
 

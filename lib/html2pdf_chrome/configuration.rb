@@ -22,10 +22,19 @@ module HTML2PDFChrome
     # Selenium, which finds or downloads one.
     attr_accessor :chromedriver_path
 
+    # Whether one Chrome is started on first use and shared by every
+    # conversion (true, the default) or each conversion starts a Chrome of its
+    # own and quits it when it is done (false). A shared Chrome makes each
+    # conversion faster and stays running for the life of the process; a
+    # Chrome per conversion is slower and is quit as soon as its conversion is
+    # done.
+    attr_accessor :reuse_driver
+
     def initialize
       @chrome_arguments = DEFAULT_CHROME_ARGUMENTS.dup
       @chrome_binary = nil
       @chromedriver_path = nil
+      @reuse_driver = true
     end
   end
 end

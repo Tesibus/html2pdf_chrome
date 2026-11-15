@@ -83,6 +83,58 @@ RSpec.describe HTML2PDFChrome::Chromedriver do
 
         expect(drivers.size).to eq(1)
       end
+
+      context "when the driver is not reused" do
+        before { configuration.reuse_driver = false }
+
+        it 'starts a driver for each call and quits it afterwards' do
+          expect(yielded_drivers(2)).to eq(drivers)
+          expect(drivers.size).to eq(2)
+          expect(drivers).to all(have_received(:quit).once)
+        end
+
+        it 'returns nil' do
+          expect(described_class.fetch_driver {}).to eq(nil)
+        end
+
+        it 'quits the driver when the block raises, and raises the same error' do
+          expect do
+            described_class.fetch_driver { raise ArgumentError, "from the block" }
+          end.to raise_error(ArgumentError, "from the block")
+          expect(drivers.first).to have_received(:quit).once
+        end
+
+        it 'warns, and does not raise, when the driver cannot be quit' do
+          result = nil
+
+          expect do
+            described_class.fetch_driver do |driver|
+              allow(driver).to receive(:quit)
+                .and_raise(Selenium::WebDriver::Error::WebDriverError, "chrome already gone")
+              result = :block_ran
+            end
+          end.to output(/\A\[html2pdf_chrome\] .*could not be quit.*chrome already gone/).to_stderr
+          expect(result).to eq(:block_ran)
+        end
+
+        it 'runs one call at a time: a second call starts no Chrome until the first is done' do
+          second_call = nil
+
+          begin
+            described_class.fetch_driver do
+              second_call = Thread.new { described_class.fetch_driver {} }
+              wait_until_blocked(second_call)
+
+              expect(drivers.size).to eq(1)
+            end
+            expect(second_call.join(5)).to be(second_call)
+          ensure
+            second_call&.kill
+          end
+
+          expect(drivers.size).to eq(2)
+        end
+      end
     end
 
     describe "starting Chrome" do
