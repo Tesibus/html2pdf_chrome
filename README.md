@@ -57,3 +57,51 @@ The header and footer templates support HTML and CSS styling. You can use specia
 - `<span class="date"></span>` - Current date
 - `<span class="title"></span>` - Document title
 - `<span class="url"></span>` - Document URL
+
+## Configuration
+
+Out of the box the gem leaves the choice of Chrome and chromedriver to Selenium, and starts Chrome with the arguments `--headless=new --disable-gpu --no-sandbox --disable-software-rasterizer`. Each of these can be changed:
+
+```ruby
+HTML2PDFChrome.configure do |config|
+  # Start this Chrome binary.
+  config.chrome_binary = "/path/to/chrome"
+
+  # Start this chromedriver.
+  config.chromedriver_path = "/path/to/chromedriver"
+
+  # Replace the arguments Chrome is started with.
+  config.chrome_arguments = %w[--headless=new --disable-gpu]
+end
+```
+
+For example, `chrome-headless-shell` is always headless, so it is started without `--headless=new`:
+
+```ruby
+HTML2PDFChrome.configure do |config|
+  config.chrome_binary = "/path/to/chrome-headless-shell"
+  config.chrome_arguments -= ["--headless=new"]
+end
+```
+
+These settings apply to this gem's driver only. Selenium's own process-wide settings, such as `Selenium::WebDriver::Chrome.path=`, still apply where a setting here is left unset.
+
+Configure the gem before the first conversion. A Chrome that is already running keeps the settings it was started with.
+
+### One Chrome per conversion
+
+Starting Chrome is slow, so by default the gem starts one on the first conversion and shares it with every conversion after that. That Chrome stays running for as long as the process does.
+
+A long-lived process that only converts now and then can instead start a Chrome for each conversion and quit it afterwards:
+
+```ruby
+HTML2PDFChrome.configure do |config|
+  config.reuse_driver = false
+end
+```
+
+Each conversion then pays for a Chrome start, and its Chrome is quit as soon as it is done. Conversions still run one at a time.
+
+## Errors
+
+Before a page is printed, the gem checks that Chrome is on the page it was sent and has finished loading it. If it is not, the page is sent once more. If Chrome still has not loaded it, `HTML2PDFChrome::NavigationError` (a subclass of `HTML2PDFChrome::Error`) is raised and no PDF is returned.
