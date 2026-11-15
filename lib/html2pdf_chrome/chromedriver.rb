@@ -1,5 +1,8 @@
 module HTML2PDFChrome
   class Chromedriver
+    # Created when the class is loaded, so that every caller takes the same one.
+    @semaphore = Mutex.new
+
     ##
     # Starting chromedriver can be slow. This method initializes a single
     # driver instance to share. This driver is accessed via a Mutex to prevent
@@ -7,9 +10,8 @@ module HTML2PDFChrome
     #
     class << self
       def fetch_driver
-        @driver ||= initialize_driver
-        @semaphore ||= Mutex.new
         @semaphore.synchronize do
+          @driver ||= initialize_driver
           yield @driver
         end
         nil
