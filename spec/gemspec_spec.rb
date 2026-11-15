@@ -11,6 +11,7 @@ RSpec.describe "html2pdf_chrome.gemspec" do
     %w[
       lib/html2pdf_chrome.rb
       lib/html2pdf_chrome/chromedriver.rb
+      lib/html2pdf_chrome/configuration.rb
       lib/html2pdf_chrome/html_converter.rb
       lib/html2pdf_chrome/version.rb
       sig/html2pdf_chrome.rbs

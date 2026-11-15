@@ -20,13 +20,17 @@ module HTML2PDFChrome
       private
 
       def initialize_driver
+        configuration = HTML2PDFChrome.configuration
         options = Selenium::WebDriver::Chrome::Options.new
-        options.add_argument('--headless=new')
-        options.add_argument('--disable-gpu')
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-software-rasterizer')
+        configuration.chrome_arguments.each { |argument| options.add_argument(argument) }
+        options.binary = configuration.chrome_binary if configuration.chrome_binary
 
-        Selenium::WebDriver.for(:chrome, options: options)
+        if configuration.chromedriver_path
+          service = Selenium::WebDriver::Service.chrome(path: configuration.chromedriver_path)
+          Selenium::WebDriver.for(:chrome, options: options, service: service)
+        else
+          Selenium::WebDriver.for(:chrome, options: options)
+        end
       end
     end
   end

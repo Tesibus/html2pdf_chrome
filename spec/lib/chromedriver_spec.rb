@@ -13,8 +13,11 @@ RSpec.describe HTML2PDFChrome::Chromedriver do
     end
   end
 
-  # The examples below start no Chrome: Selenium is stubbed.
+  # The examples below start no Chrome: Selenium is stubbed, and they read
+  # what it was asked to start.
   context "with Selenium stubbed" do
+    let(:configuration) { HTML2PDFChrome::Configuration.new }
+    let(:started_with) { {} }
     let(:drivers) { [] }
 
     # Sets the shared driver aside, so that these examples start their own and
@@ -28,7 +31,9 @@ RSpec.describe HTML2PDFChrome::Chromedriver do
     end
 
     before do
-      allow(Selenium::WebDriver).to receive(:for) do
+      allow(HTML2PDFChrome).to receive(:configuration).and_return(configuration)
+      allow(Selenium::WebDriver).to receive(:for) do |browser, **arguments|
+        started_with.merge!(arguments, browser: browser)
         double("driver", quit: nil).tap { |driver| drivers << driver }
       end
     end
@@ -77,6 +82,43 @@ RSpec.describe HTML2PDFChrome::Chromedriver do
         end
 
         expect(drivers.size).to eq(1)
+      end
+    end
+
+    describe "starting Chrome" do
+      it 'starts Chrome with the default arguments, leaving the binary and the driver to Selenium' do
+        described_class.fetch_driver {}
+
+        expect(started_with[:browser]).to eq(:chrome)
+        expect(started_with[:options].args).to eq(
+          %w[--headless=new --disable-gpu --no-sandbox --disable-software-rasterizer]
+        )
+        expect(started_with[:options].binary).to be_nil
+        expect(started_with).not_to have_key(:service)
+      end
+
+      it 'starts Chrome with the configured arguments' do
+        configuration.chrome_arguments = %w[--disable-gpu --hide-scrollbars]
+
+        described_class.fetch_driver {}
+
+        expect(started_with[:options].args).to eq(%w[--disable-gpu --hide-scrollbars])
+      end
+
+      it 'starts the configured Chrome binary' do
+        configuration.chrome_binary = "/path/to/chrome-headless-shell"
+
+        described_class.fetch_driver {}
+
+        expect(started_with[:options].binary).to eq("/path/to/chrome-headless-shell")
+      end
+
+      it 'starts the configured chromedriver' do
+        configuration.chromedriver_path = "/path/to/chromedriver"
+
+        described_class.fetch_driver {}
+
+        expect(started_with[:service].executable_path).to eq("/path/to/chromedriver")
       end
     end
   end
