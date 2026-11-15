@@ -57,3 +57,7 @@ The header and footer templates support HTML and CSS styling. You can use specia
 - `<span class="date"></span>` - Current date
 - `<span class="title"></span>` - Document title
 - `<span class="url"></span>` - Document URL
+
+## Errors
+
+Before a page is printed, the gem checks that Chrome is on the page it was sent and has finished loading it. If it is not, the page is sent once more. If Chrome still has not loaded it, `HTML2PDFChrome::NavigationError` (a subclass of `HTML2PDFChrome::Error`) is raised and no PDF is returned.
